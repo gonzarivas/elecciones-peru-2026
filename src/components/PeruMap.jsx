@@ -24,6 +24,17 @@ const politicalLeaning = {
   "TACNA": "Izquierda", "MADRE DE DIOS": "Izquierda", "ANCASH": "Izquierda"
 };
 
+const RIGHT_WING_PARTIES = [
+  "AVANZA PAÍS - PARTIDO DE INTEGRACIÓN SOCIAL",
+  "PARTIDO POLÍTICO INTEGRIDAD DEMOCRÁTICA",
+  "UNIDAD NACIONAL",
+  "PARTIDO PATRIÓTICO DEL PERÚ",
+  "FUERZA POPULAR",
+  "RENOVACIÓN POPULAR",
+  "PARTIDO PAÍS PARA TODOS",
+  "PARTIDO SICREO"
+].map(p => p.toUpperCase());
+
 // Helper strictly for matching department names handling accents
 const normalizeStr = (str) =>
   str
@@ -70,6 +81,42 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
   const [deptResults, setDeptResults] = useState([]);
   const [loadingResults, setLoadingResults] = useState(false);
 
+  // Map Mode State
+  const [mapMode, setMapMode] = useState("2021"); // "2021" o "2026"
+  const [currentWinners, setCurrentWinners] = useState({});
+  const [loadingWinners, setLoadingWinners] = useState(false);
+
+  // Map Mode Effect
+  React.useEffect(() => {
+    if (mapMode === "2026" && Object.keys(currentWinners).length === 0 && heatmapData.length > 0) {
+      const loadWinners2026 = async () => {
+        setLoadingWinners(true);
+        try {
+          const winners = {};
+          await Promise.all(heatmapData.map(async (h) => {
+            const ubigeoStr = h.ubigeoNivel01.toString().padStart(6, "0");
+            try {
+              const results = await fetchCandidatesByDepartment(h.ubigeoNivel01);
+              if (results && results.length > 0) {
+                const topParty = results[0].party.toUpperCase();
+                const isRight = RIGHT_WING_PARTIES.some(p => topParty === p || topParty.includes(p));
+                winners[ubigeoStr] = isRight ? "Derecha" : "Izquierda";
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }));
+          setCurrentWinners(winners);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoadingWinners(false);
+        }
+      };
+      loadWinners2026();
+    }
+  }, [mapMode, heatmapData, currentWinners]);
+
   // Fetch results when hovered department changes
   React.useEffect(() => {
     if (hoveredDept?.ubigeo) {
@@ -105,7 +152,9 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
     heatmapData.forEach((h) => {
       const ubigeoStr = h.ubigeoNivel01.toString().padStart(6, "0");
       const deptoName = ubigeoMap[ubigeoStr];
-      const leaning = politicalLeaning[deptoName] || "Neutro";
+      const leaning = (mapMode === "2026" && currentWinners[ubigeoStr]) 
+        ? currentWinners[ubigeoStr] 
+        : (politicalLeaning[deptoName] || "Neutro");
 
       // Re-calculate the absolute missing ballots based on the percentage
       // because we only get `actasContabilizadas` and `porcentajeActasContabilizadas`
@@ -137,7 +186,7 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
       actasPendientesDerecha
     };
 
-  }, [heatmapData, ubigeosData]);
+  }, [heatmapData, ubigeosData, mapMode, currentWinners]);
 
   // Pre-process API data into an easy-to-use map:
   // normalized NOMBDEP -> percentage
@@ -226,8 +275,6 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
                   let percentage = departmentData[normalizedGeoName]?.percentage;
                   let ubigeo = departmentData[normalizedGeoName]?.ubigeo;
                   
-                  const leaning = politicalLeaning[normalizedGeoName] || "Neutro";
-
                   // Fallback special logic for Callao / Lima
                   if (percentage === undefined) {
                     if (normalizedGeoName.includes("PROVINCIA CONSTITUCIONAL")) {
@@ -239,6 +286,11 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
                       ubigeo = departmentData["LIMA"]?.ubigeo;
                     }
                   }
+
+                  const ubigeoStr = ubigeo ? ubigeo.toString().padStart(6, "0") : null;
+                  const leaning = (ubigeoStr && mapMode === "2026" && currentWinners[ubigeoStr])
+                    ? currentWinners[ubigeoStr]
+                    : (politicalLeaning[normalizedGeoName] || "Neutro");
 
                   const fillColor = getFillColor(percentage, leaning);
 
@@ -395,8 +447,25 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
         animate={{ opacity: 1, y: 0 }}
         className="w-full md:absolute md:left-4 md:bottom-4 md:w-72 z-10 bg-card/60 md:bg-card/95 backdrop-blur-md border-t md:border border-border/50 p-3 md:p-4 md:rounded-xl"
       >
-        <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2 text-center border-b border-border/50 pb-2">
-          Balance de Escrutinio
+        <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-2">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-left">
+            Balance de Escrutinio
+          </div>
+          <div className="flex bg-slate-100 rounded-md p-0.5">
+            <button 
+              onClick={() => setMapMode('2021')} 
+              className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded transition-colors", mapMode === '2021' ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              2021
+            </button>
+            <button 
+              onClick={() => setMapMode('2026')} 
+              className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors", mapMode === '2026' ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              HOY
+              {loadingWinners && <Loader2 className="w-2.5 h-2.5 animate-spin"/>}
+            </button>
+          </div>
         </div>
 
         {/* Global Progress Bar */}
@@ -458,7 +527,7 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
             Los porcentajes en el tablero representan qué proporción de <strong>todas las actas que faltan contabilizar hoy a nivel nacional</strong> proviene de zonas de tendencia de izquierda vs derecha. Al sumar ambos valores, el resultado es exactamente el <strong>100%</strong> de la "bolsa" de votos aún no procesados.
           </p>
           <div className="py-2.5 px-4 bg-[#F8FAFC] border-l-[3px] border-[#CBD5E1] rounded-r-md text-slate-500 text-[11px]">
-            <strong>Nota Histórica:</strong> La clasificación de departamentos como "Izquierda" o "Derecha" se basa en los resultados oficiales de la <strong>Segunda Vuelta Presidencial 2021</strong> (Pedro Castillo vs. Keiko Fujimori), identificando la tendencia predominante de voto en cada región.
+            <strong>Nota de Color (Mapa):</strong> Por defecto, se usa la tendencia del <strong>2021</strong>. Al seleccionar <strong>HOY</strong>, se colorea cada región según si el partido del candidato que lidera actualmente pertenece a la <strong>Izquierda o Derecha</strong> (basado en la lista preconfigurada de partidos de derecha).
           </div>
           <p>
             Dado que la ONPE no publica el padrón total regional en esta vista, calculamos las actas absolutas esperadas usando regla de tres <em>(Contabilizadas / Porcentaje)</em> para obtener valores reales de votos pendientes, en lugar de promediar los porcentajes crudos.
