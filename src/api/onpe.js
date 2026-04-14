@@ -109,3 +109,29 @@ export async function fetchUbigeos() {
   const data = await res.json();
   return data.data || data;
 }
+/**
+ * Fetch presidential candidates by department (ubigeoNivel1)
+ */
+export async function fetchCandidatesByDepartment(ubigeoNivel1) {
+  // Use the full ubigeo code as provided in heatmapData (ubigeoNivel01)
+  const code = ubigeoNivel1.toString();
+  
+  const res = await fetch(
+    `${BASE}/eleccion-presidencial/participantes-ubicacion-geografica-nombre?idEleccion=10&idAmbitoGeografico=1&tipoFiltro=ubigeo_nivel_01&ubigeoNivel1=${code}`
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  
+  const items = data.data || data;
+  
+  // Return top 5
+  return items
+    .filter((item) => item.dniCandidato && item.dniCandidato.trim() !== "")
+    .slice(0, 5)
+    .map((item, index) => ({
+       party: item.nombreAgrupacionPolitica,
+       percentage: item.porcentajeVotosValidos,
+       logoUrl: getPartyLogoUrl(item.codigoAgrupacionPolitica),
+       candidateName: item.nombreCandidato
+    }));
+}

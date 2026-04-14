@@ -14,238 +14,205 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
+  Clock,
+  Activity,
 } from "lucide-react";
 import { cn } from "./lib/utils";
 import { fetchCandidates, fetchTotals, fetchHeatmap, fetchUbigeos } from "./api/onpe";
 import PeruMap from "./components/PeruMap";
 import "./index.css";
 
-/* ─── Constants ─── */
-const SOURCE_URL =
-  "https://resultadoelectoral.onpe.gob.pe/main/presidenciales";
+const SOURCE_URL = "https://resultadoelectoral.onpe.gob.pe/main/presidenciales";
 
-/* ─── Helper Components ─── */
-
-function Badge({ children, className }) {
+/* ─── Avatar ─── */
+function CandidateAvatar({ candidate, size = "md" }) {
+  const [imgError, setImgError] = useState(false);
+  const sizes = { sm: "w-9 h-9", md: "w-14 h-14", lg: "w-16 h-16" };
+  if (imgError) {
+    return (
+      <div className={cn(sizes[size], "rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0")}
+        style={{ backgroundColor: candidate.color }}>
+        {candidate.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
+      </div>
+    );
+  }
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        className
-      )}
-    >
-      {children}
-    </span>
+    <img src={candidate.photoUrl} alt={candidate.name} onError={() => setImgError(true)}
+      className={cn(sizes[size], "rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm")} />
   );
 }
 
+/* ─── Party Logo ─── */
+function PartyLogo({ candidate, size = "sm" }) {
+  const [imgError, setImgError] = useState(false);
+  const sizes = { sm: "w-7 h-7", md: "w-8 h-8" };
+  const acronym = candidate.party
+    ? candidate.party.split(" ")
+        .filter(w => w.length > 2 && !["DEL","LOS","LAS","POR","PARA"].includes(w.toUpperCase()))
+        .map(w => w[0]).join("").substring(0, 2).toUpperCase()
+    : "?";
+
+  if (imgError) {
+    return (
+      <div title={candidate.party}
+        className={cn(sizes[size], "rounded-md flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0")}
+        style={{ backgroundColor: candidate.color }}>
+        {acronym}
+      </div>
+    );
+  }
+  return (
+    <img src={candidate.logoUrl} alt={candidate.party} title={candidate.party}
+      onError={() => setImgError(true)}
+      className={cn(sizes[size], "rounded-md object-contain flex-shrink-0 bg-white border border-border p-0.5")} />
+  );
+}
+
+/* ─── Progress Bar ─── */
 function ProgressBar({ value, max, color, delay = 0, showLabel = true }) {
   const pct = Math.min((value / max) * 100, 100);
   return (
-    <div className="flex items-center gap-3 w-full">
-      <div className="flex-1 h-2.5 bg-secondary/60 rounded-full overflow-hidden shadow-inner">
-        <motion.div
-          className="h-full rounded-full"
-          style={{ backgroundColor: color }}
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 1.2, delay, ease: "easeOut" }}
-        />
+    <div className="flex items-center gap-2 w-full">
+      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <motion.div className="h-full rounded-full" style={{ backgroundColor: color }}
+          initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+          transition={{ duration: 1.2, delay, ease: "easeOut" }} />
       </div>
       {showLabel && (
-        <span 
-          className="text-xs font-bold min-w-[45px] text-right"
-          style={{ color }}
-        >
-          {value.toFixed(2)}%
+        <span className="text-xs font-bold min-w-[55px] text-right tabular-nums" style={{ color }}>
+          {value.toFixed(3)}%
         </span>
       )}
     </div>
   );
 }
 
-function CandidateAvatar({ candidate, size = "md" }) {
-  const [imgError, setImgError] = useState(false);
-  const sizes = {
-    sm: "w-10 h-10",
-    md: "w-12 h-12",
-    lg: "w-16 h-16",
-  };
-
-  if (imgError) {
-    return (
-      <div
-        className={cn(
-          sizes[size],
-          "rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-lg"
-        )}
-        style={{ backgroundColor: candidate.color }}
-      >
-        {candidate.name
-          .split(" ")
-          .map((w) => w[0])
-          .slice(0, 2)
-          .join("")}
-      </div>
-    );
-  }
-
+/* ─── Loading ─── */
+function LoadingState() {
   return (
-    <img
-      src={candidate.photoUrl}
-      alt={candidate.name}
-      onError={() => setImgError(true)}
-      className={cn(
-        sizes[size],
-        "rounded-xl object-cover flex-shrink-0 shadow-lg border-2 border-border/30"
-      )}
-    />
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-4">
+        <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
+          <Vote className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-4 h-4 text-primary animate-spin" />
+          <p className="text-sm font-semibold text-muted-foreground">Cargando datos de la ONPE…</p>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
-function PartyLogo({ candidate, size = "sm" }) {
-  const [imgError, setImgError] = useState(false);
-  const sizes = {
-    sm: "w-6 h-6",
-    md: "w-8 h-8",
-  };
-
-  if (imgError) {
-    const acronym = candidate.party
-      ? candidate.party
-          .split(" ")
-          .filter((w) => w.length > 2 && !["DEL", "LOS", "LAS", "POR", "PARA"].includes(w.toUpperCase()))
-          .map((w) => w[0])
-          .join("")
-          .substring(0, 2)
-          .toUpperCase()
-      : "?";
-
-    return (
-      <div
-        title={candidate.party}
-        className={cn(
-          sizes[size],
-          "rounded flex items-center justify-center text-white font-bold text-[10px] shadow-sm"
-        )}
-        style={{ backgroundColor: candidate.color }}
-      >
-        {acronym}
-      </div>
-    );
-  }
-
+/* ─── Error ─── */
+function ErrorState({ error, onRetry }) {
   return (
-    <img
-      src={candidate.logoUrl}
-      alt={candidate.party}
-      title={candidate.party}
-      onError={() => setImgError(true)}
-      className={cn(
-        sizes[size],
-        "rounded object-contain flex-shrink-0"
-      )}
-    />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="max-w-sm w-full bg-white rounded-xl border border-border p-8 text-center">
+        <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-6 h-6 text-destructive" />
+        </div>
+        <h2 className="text-lg font-bold mb-2">Error al cargar datos</h2>
+        <p className="text-sm text-muted-foreground mb-6">{error}</p>
+        <button onClick={onRetry}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-blue-700 transition-colors">
+          <RefreshCw className="w-4 h-4" /> Reintentar
+        </button>
+      </div>
+    </div>
   );
 }
 
 /* ─── Stat Card ─── */
+const STAT_ICON_COLORS = ["#2563EB", "#6366F1", "#D97706", "#10B981"];
+const STAT_ICON_BG = ["#EFF6FF", "#EEF2FF", "#FFFBEB", "#ECFDF5"];
 
-function StatCard({ icon: Icon, label, value, sublabel, colorClass }) {
+function StatCard({ icon: Icon, label, value, sublabel, idx = 0 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="bg-card border-x border-y border-border p-5 rounded-lg shadow-sm hover:shadow transition-shadow flex items-start justify-between"
-    >
-      <div className="space-y-1">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-        <p className="text-3xl font-black tracking-tighter text-foreground">{value}</p>
-        {sublabel && (
-          <p className="text-[13px] text-muted-foreground font-medium">{sublabel}</p>
-        )}
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: idx * 0.07 }}
+      className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-5 flex items-start justify-between gap-3">
+      <div className="space-y-1 min-w-0 flex-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        <p className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground leading-none">{value}</p>
+        {sublabel && <p className="text-[11px] text-muted-foreground mt-1">{sublabel}</p>}
       </div>
-      <div className={cn("p-2.5 rounded-md", colorClass)}>
-        <Icon className="w-5 h-5 flex-shrink-0" />
+      <div className="rounded-lg p-2.5 flex-shrink-0"
+        style={{ backgroundColor: STAT_ICON_BG[idx % 4] }}>
+        <Icon className="w-5 h-5" style={{ color: STAT_ICON_COLORS[idx % 4] }} />
       </div>
     </motion.div>
   );
 }
 
-/* ─── Podium / Leader Card ─── */
-
+/* ─── Podium Card ─── */
 function PodiumCard({ candidate, rank, delay }) {
   const isSecondRound = rank <= 2;
+  const rankColors = { 1: "#2563EB", 2: "#2563EB", 3: "#94A3B8" };
+  const pctColor = isSecondRound ? candidate.color : "#0F172A";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.38, delay }}
       className={cn(
-        "relative rounded-xl border bg-card p-6 flex flex-col h-full cursor-default transition-all duration-200",
-        isSecondRound 
-          ? "border-primary/30 ring-1 ring-primary/10 shadow-md hover:shadow-lg" 
-          : "border-border shadow-sm hover:shadow-md"
-      )}
-    >
-      {isSecondRound && (
-        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl uppercase tracking-wider shadow-sm z-20">
-          Clasifica a 2da Vuelta
-        </div>
-      )}
+        "relative bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col h-full",
+        isSecondRound ? "border-blue-200 shadow-blue-500/5" : "border-slate-200"
+      )}>
 
-      {/* Rank badge + percentage */}
-      <div className="flex items-center justify-between mb-4">
-        <Badge className={isSecondRound ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}>
-          #{rank}
-        </Badge>
-        <span
-          className="text-3xl font-black tracking-tight"
-          style={{ color: isSecondRound ? candidate.color : "var(--color-foreground)" }}
-        >
-          {candidate.validVotes.toFixed(2)}%
-        </span>
+      {/* Top accent bar */}
+      <div className="w-full flex justify-center pt-3 pb-0 px-4">
+        {isSecondRound ? (
+          <span className="inline-flex items-center bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full leading-none">
+            Clasifica a 2da Vuelta
+          </span>
+        ) : (
+          <span className="inline-flex items-center bg-slate-50 border border-slate-200 text-slate-400 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full leading-none">
+            No pasa a 2da Vuelta
+          </span>
+        )}
       </div>
 
-      {/* Photo + Party Logo */}
-      <div className="flex items-center gap-3 mb-4">
-        <CandidateAvatar candidate={candidate} size="lg" />
-        <PartyLogo candidate={candidate} size="md" />
-      </div>
-
-      {/* Name */}
-      <h3 className="text-base font-bold leading-tight mb-1 line-clamp-2 text-foreground">
-        {candidate.name}
-      </h3>
-      <p className="text-xs font-semibold text-muted-foreground mb-5 line-clamp-1 uppercase tracking-wider">
-        {candidate.party}
-      </p>
-
-      {/* Stats */}
-      <div className="mt-auto space-y-3 pt-4 border-t border-border/60">
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold mb-1">
-            Porcentaje Obtenido
+      <div className="p-5 flex flex-col flex-1">
+        {/* Row: rank + percentage */}
+        <div className="flex items-start justify-between mb-4">
+          <span className="inline-flex items-center bg-slate-100 text-slate-500 text-[11px] font-bold px-2 py-0.5 rounded">
+            #{rank}
           </span>
-          <ProgressBar
-            value={candidate.validVotes}
-            max={50}
-            color={candidate.color}
-            delay={delay + 0.1}
-            showLabel={true}
-          />
+          <span className="text-2xl md:text-3xl font-black tabular-nums leading-none" style={{ color: pctColor }}>
+            {candidate.validVotes.toFixed(3)}%
+          </span>
         </div>
-        
-        <div className="flex justify-between items-center mt-3">
-          <span className="text-xs font-medium text-muted-foreground">
-            Total de Votos
-          </span>
-          <span className="text-sm font-bold text-foreground">
-            {candidate.totalVotes.toLocaleString()}
-          </span>
+
+        {/* Photo + party + name */}
+        <div className="flex items-start gap-3 mb-4">
+          <div className="relative flex-shrink-0">
+            <CandidateAvatar candidate={candidate} size="md" />
+            <div className="absolute -bottom-1 -right-1">
+              <PartyLogo candidate={candidate} size="sm" />
+            </div>
+          </div>
+          <div className="min-w-0 pt-1">
+            <h3 className="text-sm font-bold leading-tight text-foreground uppercase">
+              {candidate.name}
+            </h3>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mt-1">
+              {candidate.party}
+            </p>
+          </div>
+        </div>
+
+        {/* Progress */}
+        <div className="mt-auto pt-3 border-t border-border">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+            Porcentaje obtenido
+          </p>
+          <ProgressBar value={candidate.validVotes} max={50} color={candidate.color} delay={delay + 0.1} />
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-[10px] text-muted-foreground font-medium">Total de Votos</span>
+            <span className="text-sm font-bold tabular-nums text-foreground">
+              {candidate.totalVotes.toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -253,52 +220,30 @@ function PodiumCard({ candidate, rank, delay }) {
 }
 
 /* ─── Table Row ─── */
-
 function CandidateRow({ candidate, rank, delay, maxVotes }) {
+  const isTop2 = rank <= 2;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-      whileHover={{ scale: 1.01, backgroundColor: "var(--color-secondary)" }}
-      className="flex items-center gap-4 px-5 py-4 rounded-xl transition-all cursor-default group border border-transparent hover:border-border hover:shadow-sm"
-    >
-      {/* Rank */}
-      <div className="text-sm font-bold text-muted-foreground w-8 text-center">
-        {rank}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, delay }}
+      className={cn("flex items-center gap-3 md:gap-4 px-4 md:px-5 py-3 transition-colors hover:bg-slate-50",
+        isTop2 && "bg-blue-50/40 hover:bg-blue-50/70")}>
+      <div className="w-7 flex justify-center flex-shrink-0">
+        <span className="text-[11px] font-bold text-muted-foreground tabular-nums">#{rank}</span>
       </div>
-
-      {/* Photo */}
       <CandidateAvatar candidate={candidate} size="sm" />
-
-      {/* Party logo */}
       <PartyLogo candidate={candidate} />
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate">{candidate.name}</p>
-        <p className="text-xs text-muted-foreground truncate">
-          {candidate.party}
-        </p>
+        <p className="text-sm font-semibold truncate text-foreground">{candidate.name}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{candidate.party}</p>
       </div>
-
-      {/* Progress bar */}
       <div className="hidden md:block flex-1 max-w-[200px]">
-        <ProgressBar
-          value={candidate.validVotes}
-          max={maxVotes}
-          color={candidate.color}
-          delay={delay}
-          showLabel={false}
-        />
+        <ProgressBar value={candidate.validVotes} max={maxVotes} color={candidate.color} delay={delay} showLabel={false} />
       </div>
-
-      {/* Stats */}
       <div className="text-right min-w-[90px]">
-        <p className="text-sm font-bold" style={{ color: candidate.color }}>
-          {candidate.validVotes.toFixed(2)}%
+        <p className="text-sm font-bold tabular-nums" style={{ color: candidate.color }}>
+          {candidate.validVotes.toFixed(3)}%
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground tabular-nums">
           {candidate.totalVotes.toLocaleString()} votos
         </p>
       </div>
@@ -306,68 +251,20 @@ function CandidateRow({ candidate, rank, delay, maxVotes }) {
   );
 }
 
-/* ─── Loading State ─── */
-
-function LoadingState() {
+/* ─── Section Header ─── */
+function SectionHeader({ icon: Icon, title, iconColor = "#D97706", children }) {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center gap-4"
-      >
-        <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center">
-            <Vote className="w-8 h-8 text-primary" />
-          </div>
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-1 -right-1"
-          >
-            <Loader2 className="w-5 h-5 text-primary" />
-          </motion.div>
-        </div>
-        <div className="text-center">
-          <h2 className="text-xl font-bold">Cargando Resultados</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Obteniendo datos de la ONPE...
-          </p>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-/* ─── Error State ─── */
-
-function ErrorState({ error, onRetry }) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full rounded-xl border border-destructive/30 bg-card p-8 text-center"
-      >
-        <div className="w-14 h-14 rounded-2xl bg-destructive/20 flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle className="w-7 h-7 text-destructive" />
-        </div>
-        <h2 className="text-xl font-bold mb-2">Error al cargar datos</h2>
-        <p className="text-sm text-muted-foreground mb-6">{error}</p>
-        <button
-          onClick={onRetry}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Reintentar
-        </button>
-      </motion.div>
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+      <div className="flex items-center gap-2.5">
+        <Icon className="w-[18px] h-[18px]" style={{ color: iconColor }} />
+        <h2 className="text-lg md:text-xl font-bold text-foreground">{title}</h2>
+      </div>
+      {children}
     </div>
   );
 }
 
 /* ─── Main App ─── */
-
 export default function App() {
   const [candidates, setCandidates] = useState([]);
   const [totals, setTotals] = useState(null);
@@ -395,7 +292,6 @@ export default function App() {
       setUbigeosData(ubigeosRaw);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error("Failed to load data:", err);
       setError(err.message || "No se pudieron obtener los datos de la ONPE");
     } finally {
       setLoading(false);
@@ -404,268 +300,165 @@ export default function App() {
 
   useEffect(() => {
     loadData();
-    // Auto-refresh every 2 minutes
     const interval = setInterval(loadData, 120000);
     return () => clearInterval(interval);
   }, []);
 
   if (loading && candidates.length === 0) return <LoadingState />;
-  if (error && candidates.length === 0)
-    return <ErrorState error={error} onRetry={loadData} />;
+  if (error && candidates.length === 0) return <ErrorState error={error} onRetry={loadData} />;
 
   const top3 = candidates.slice(0, 3);
   const rest = candidates.slice(3);
   const maxVotes = candidates[0]?.validVotes || 1;
-  const totalVotesCast = candidates.reduce((s, c) => s + c.totalVotes, 0);
 
-  const filteredCandidates = rest.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.party.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCandidates = rest.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.party.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const displayedCandidates = showAll ? filteredCandidates : filteredCandidates.slice(0, 5);
 
-  const displayedCandidates = showAll
-    ? filteredCandidates
-    : filteredCandidates.slice(0, 5);
+  const contabilizadasPct = totals?.actasContabilizadas || 0;
+  const enviadasJeePct = totals?.actasEnviadasJee || 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 font-sans">
-      {/* ── Header ── */}
-      <header className="relative z-50 sticky top-0 bg-card border-b border-border shadow-sm transition-all duration-300">
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-col gap-4"
-          >
-            {/* Top tags row */}
+    <div className="min-h-screen bg-background text-foreground font-sans">
+
+      {/* ════ HEADER ════ */}
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-md">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Badges row */}
+          <div className="flex items-center gap-2 pt-3 pb-2">
+            <span className="inline-flex items-center gap-1.5 border border-emerald-300 text-emerald-600 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 live-dot" />
+              En Vivo
+            </span>
+            <span className="inline-flex items-center bg-primary text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+              Balotaje Presidencial 2026
+            </span>
+          </div>
+
+          {/* Title row */}
+          <div className="flex items-start md:items-center justify-between gap-4 pb-3">
             <div className="flex items-center gap-3">
-              <div className="px-2 py-0.5 rounded flex items-center bg-emerald-100 text-emerald-700 font-bold text-[10px] tracking-widest uppercase border border-emerald-200">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
-                EN VIVO
+              <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 hidden sm:flex items-center justify-center flex-shrink-0">
+                <Vote className="w-6 h-6 text-primary" />
               </div>
-              <span className="text-muted-foreground/30 hidden sm:inline">•</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-widest hidden sm:inline-block">
-                Balotaje Presidencial 2026
-              </span>
-            </div>
-
-            {/* Main Title and Actions Row */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between w-full gap-4">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 hidden sm:flex items-center justify-center">
-                  <Vote className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-foreground leading-none">
-                    Resultados ONPE
-                  </h1>
-                  <p className="text-muted-foreground text-sm font-medium mt-1">
-                    Elecciones Generales — Participación de {candidates.length} organizaciones
-                  </p>
-                </div>
-              </div>
-
-              {/* Botones de acción derecha */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={loadData}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-card border border-border text-xs font-bold text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-all disabled:opacity-50"
-                  title="Actualizar Datos"
-                >
-                  <RefreshCw
-                    className={cn("w-3.5 h-3.5", loading && "animate-spin")}
-                  />
-                  <span>Actualizar</span>
-                </button>
-                <a
-                  href={SOURCE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-card border border-border text-xs font-bold text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-all group"
-                  title="Ir a fuente original (ONPE)"
-                >
-                  <span>Fuente Oficial</span>
-                  <ExternalLink className="w-3.5 h-3.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
-                </a>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground leading-none">
+                  Resultados ONPE
+                </h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Elecciones Generales — Participación de {candidates.length} organizaciones
+                </p>
               </div>
             </div>
-          </motion.div>
 
-          {/* Full Width Progress Bar (Stacked) */}
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={loadData} disabled={loading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-white text-sm font-semibold text-foreground hover:bg-slate-50 transition-colors disabled:opacity-50">
+                <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+                <span className="hidden sm:inline">Actualizar</span>
+              </button>
+              <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-white text-sm font-semibold text-foreground hover:bg-slate-50 transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Fuente Oficial</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Progress section */}
           {totals && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-8 pt-6 border-t border-border/30 max-w-5xl"
-            >
-              <div className="flex flex-col md:flex-row md:items-end gap-x-6 gap-y-3 mb-3">
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">
-                    Actas contabilizadas
-                  </h3>
-                <div className="mt-1 flex items-baseline">
-                  <div className="text-5xl md:text-6xl font-black tracking-tighter text-foreground leading-none">
-                    {totals.actasContabilizadas?.toFixed(3)}
-                  </div>
-                  <span className="text-2xl md:text-3xl font-bold text-muted-foreground ml-1 mb-1">%</span>
+            <div className="border-t border-border pt-3 pb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
+                Actas Contabilizadas
+              </p>
+
+              <div className="flex flex-col sm:flex-row sm:items-end gap-2 mb-2">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl md:text-5xl font-black tracking-tighter text-foreground tabular-nums leading-none">
+                    {contabilizadasPct.toFixed(3)}
+                  </span>
+                  <span className="text-2xl font-bold text-muted-foreground">%</span>
                 </div>
-                </div>
-                
-                <div className="mb-1 space-y-1">
-                  <p className="text-lg font-bold text-foreground">
+                <div className="sm:ml-4">
+                  <p className="text-sm font-bold text-foreground">
                     Total de actas: {totals.totalActas?.toLocaleString()}
                   </p>
-                  <p className="text-sm text-primary font-medium">
-                    {totals.actasEnviadasJee?.toFixed(3)} % de Actas para envío al JEE y {totals.actasPendientesJee?.toFixed(3)} % de Actas pendientes
+                  <p className="text-xs text-primary font-medium">
+                    {enviadasJeePct.toFixed(3)}% de Actas para envío al JEE y {totals.actasPendientesJee?.toFixed(3)}% de Actas pendientes
                   </p>
                 </div>
               </div>
 
-              {/* Stacked Progress Bar */}
-              <div className="h-6 w-full flex rounded-sm overflow-hidden shadow-inner bg-accent/20 border border-border/20">
-                {/* Contabilizadas */}
-                <motion.div
-                  className="bg-primary hover:brightness-110 transition-all cursor-crosshair relative group flex items-center justify-center min-w-[2px]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${totals.actasContabilizadas || 0}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                >
-                   <div className="absolute opacity-0 group-hover:opacity-100 top-full mt-2 left-1/2 -translate-x-1/2 bg-popover border border-border text-popover-foreground text-xs px-2.5 py-1.5 rounded shadow-xl whitespace-nowrap pointer-events-none z-50">
-                     <span className="font-bold text-primary">Contabilizadas:</span> {totals.contabilizadas?.toLocaleString()} actas
-                   </div>
-                </motion.div>
-                
-                {/* Enviadas JEE */}
-                <motion.div
-                  className="bg-amber-500 hover:brightness-110 transition-all cursor-crosshair relative group flex items-center justify-center min-w-[2px]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${totals.actasEnviadasJee || 0}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
-                >
-                   <div className="absolute opacity-0 group-hover:opacity-100 top-full mt-2 left-1/2 -translate-x-1/2 bg-popover border border-border text-popover-foreground text-xs px-2.5 py-1.5 rounded shadow-xl whitespace-nowrap pointer-events-none z-50">
-                     <span className="font-bold text-amber-500">Envío al JEE:</span> {totals.enviadasJee?.toLocaleString()} actas
-                   </div>
-                </motion.div>
-                
-                {/* Pendientes */}
-                <motion.div
-                  className="bg-muted hover:bg-muted/80 transition-all cursor-crosshair relative group flex items-center justify-center min-w-[2px]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${totals.actasPendientesJee || 0}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
-                >
-                   <div className="absolute opacity-0 group-hover:opacity-100 top-full mt-2 left-1/2 -translate-x-1/2 bg-popover border border-border text-popover-foreground text-xs px-2.5 py-1.5 rounded shadow-xl whitespace-nowrap pointer-events-none z-50">
-                     <span className="font-bold">Pendientes:</span> {totals.pendientesJee?.toLocaleString()} actas
-                   </div>
-                </motion.div>
+              {/* Composite progress bar */}
+              <div className="h-3 w-full flex rounded-full overflow-hidden bg-slate-100">
+                <motion.div style={{ backgroundColor: "#2563EB" }}
+                  initial={{ width: 0 }} animate={{ width: `${contabilizadasPct}%` }}
+                  transition={{ duration: 1.5, ease: "easeOut" }} />
+                <motion.div style={{ backgroundColor: "#F59E0B" }}
+                  initial={{ width: 0 }} animate={{ width: `${enviadasJeePct}%` }}
+                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }} />
               </div>
-              
-              {/* Actualizado info */}
-              <div className="mt-4 text-xs font-bold text-primary uppercase tracking-widest">
-                {lastUpdated
-                  ? `ACTUALIZADO AL ${lastUpdated.toLocaleDateString("es-PE")} A LAS ${lastUpdated.toLocaleTimeString("es-PE", { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-                  : "ACTUALIZANDO..."}
-              </div>
-            </motion.div>
+
+              {lastUpdated && (
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mt-2">
+                  Actualizado al {lastUpdated.toLocaleDateString("es-PE")} a las {lastUpdated.toLocaleTimeString("es-PE")}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* ════ MAIN ════ */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-8 md:space-y-10">
+
         {/* ── Stats Row ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Users}
-            label="Candidatos"
-            value={candidates.length}
-            sublabel="Organizaciones políticas"
-            colorClass="bg-blue-100 text-blue-700"
-          />
-          <StatCard
-            icon={BarChart3}
-            label="Participación"
-            value={`${totals?.participacionCiudadana?.toFixed(2) || 0}%`}
-            sublabel="Electores hábiles"
-            colorClass="bg-indigo-100 text-indigo-700"
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Líder"
-            value={`${candidates[0]?.validVotes.toFixed(2)}%`}
-            sublabel={candidates[0]?.name.split(" ").slice(-2).join(" ")}
-            colorClass="bg-amber-100 text-amber-700"
-          />
-          <StatCard
-            icon={Award}
-            label="Corte"
-            value="En Vivo"
-            sublabel={
-              lastUpdated
-                ? lastUpdated.toLocaleTimeString("es-PE", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "—"
-            }
-            colorClass="bg-emerald-100 text-emerald-700"
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <StatCard icon={Users} label="Candidatos" value={candidates.length}
+            sublabel="Organizaciones políticas" idx={0} />
+          <StatCard icon={Activity} label="Participación"
+            value={`${totals?.participacionCiudadana?.toFixed(3) || "0.000"}%`}
+            sublabel="Electores hábiles" idx={1} />
+          <StatCard icon={TrendingUp} label="Líder"
+            value={`${candidates[0]?.validVotes.toFixed(3)}%`}
+            sublabel={candidates[0]?.name.split(" ").slice(-2).join(" ")} idx={2} />
+          <StatCard icon={Award} label="Corte" value="En Vivo"
+            sublabel={lastUpdated ? lastUpdated.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }) : "—"}
+            idx={3} />
         </div>
 
         {/* ── Top Candidates ── */}
         <section>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-            <div className="flex items-center gap-3">
-              <Trophy className="w-5 h-5 text-gold" />
-              <h2 className="text-xl font-bold">Líderes de la Contienda</h2>
-            </div>
-            
-            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg max-w-md">
-              <AlertTriangle className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-xs text-primary font-medium leading-tight">
+          <SectionHeader icon={Trophy} title="Líderes de la Contienda" iconColor="#D97706">
+            <div className="flex items-center gap-2 px-4 py-2 bg-[#E2E8F6] border border-[#BFC9E7] shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-[10px] max-w-sm">
+              <AlertTriangle className="w-[14px] h-[14px] text-[#1D4ED8] flex-shrink-0" />
+              <p className="text-[12px] text-[#1D4ED8] font-medium leading-[1.35]">
                 Solo los <strong className="font-bold">2 primeros lugares</strong> clasifican a la Segunda Vuelta Electoral (Balotaje).
               </p>
             </div>
-          </div>
-          
-          {/* Top 3 List */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-            <div>
-              {top3[0] && (
-                <PodiumCard candidate={top3[0]} rank={1} delay={0.1} />
-              )}
-            </div>
-            <div>
-              {top3[1] && (
-                <PodiumCard candidate={top3[1]} rank={2} delay={0.2} />
-              )}
-            </div>
-            <div>
-              {top3[2] && (
-                <PodiumCard candidate={top3[2]} rank={3} delay={0.3} />
-              )}
-            </div>
+          </SectionHeader>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+            {top3[0] && <PodiumCard candidate={top3[0]} rank={1} delay={0.1} />}
+            {top3[1] && <PodiumCard candidate={top3[1]} rank={2} delay={0.2} />}
+            {top3[2] && <PodiumCard candidate={top3[2]} rank={3} delay={0.3} />}
           </div>
         </section>
 
-        {/* ── Mapa de Avance Regional ── */}
+        {/* ── Mapa Regional ── */}
         <section>
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-5 h-5 flex items-center justify-center text-primary">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
-            </div>
-            <h2 className="text-xl font-bold">Avance Regional</h2>
+          <SectionHeader icon={BarChart3} title="Avance Regional" iconColor="#2563EB" />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <PeruMap heatmapData={heatmapData} ubigeosData={ubigeosData} totals={totals} />
           </div>
-          <PeruMap heatmapData={heatmapData} ubigeosData={ubigeosData} totals={totals} />
-          
-          {/* ── Regional Progress Ranking ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 live-dot" />
                 Mayor Avance Regional
               </h3>
               <div className="space-y-3">
@@ -675,34 +468,29 @@ export default function App() {
                   .map((reg, idx) => {
                     const depto = ubigeosData.find(u => u.ubigeo === reg.ubigeoNivel01.toString().padStart(6, "0"));
                     return (
-                      <div key={reg.ubigeoNivel01} className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-bold text-muted-foreground w-4">{idx + 1}</span>
-                          <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors uppercase tracking-tight">
-                            {depto?.nombre || 'Región'}
-                          </span>
+                      <div key={reg.ubigeoNivel01} className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-muted-foreground w-4 text-right tabular-nums">{idx + 1}</span>
+                        <span className="text-xs font-semibold text-foreground uppercase w-28 truncate">
+                          {depto?.nombre || "Región"}
+                        </span>
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div initial={{ width: 0 }}
+                            animate={{ width: `${reg.porcentajeActasContabilizadas}%` }}
+                            transition={{ duration: 1, delay: idx * 0.05 }}
+                            className="h-full bg-emerald-500 rounded-full" />
                         </div>
-                        <div className="flex items-center gap-3 flex-1 px-4">
-                          <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${reg.porcentajeActasContabilizadas}%` }}
-                              className="h-full bg-emerald-500"
-                            />
-                          </div>
-                          <span className="text-[11px] font-black text-emerald-700 w-12 text-right">
-                            {reg.porcentajeActasContabilizadas.toFixed(1)}%
-                          </span>
-                        </div>
+                        <span className="text-[11px] font-bold text-emerald-600 w-16 text-right tabular-nums">
+                          {reg.porcentajeActasContabilizadas.toFixed(3)}%
+                        </span>
                       </div>
                     );
                   })}
               </div>
             </div>
 
-            <div className="bg-card border border-border/50 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-600 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
                 Menor Avance Regional
               </h3>
               <div className="space-y-3">
@@ -713,25 +501,20 @@ export default function App() {
                   .map((reg, idx) => {
                     const depto = ubigeosData.find(u => u.ubigeo === reg.ubigeoNivel01.toString().padStart(6, "0"));
                     return (
-                      <div key={reg.ubigeoNivel01} className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-bold text-muted-foreground w-4">{idx + 1}</span>
-                          <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors uppercase tracking-tight">
-                            {depto?.nombre || 'Región'}
-                          </span>
+                      <div key={reg.ubigeoNivel01} className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-muted-foreground w-4 text-right tabular-nums">{idx + 1}</span>
+                        <span className="text-xs font-semibold text-foreground uppercase w-28 truncate">
+                          {depto?.nombre || "Región"}
+                        </span>
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div initial={{ width: 0 }}
+                            animate={{ width: `${reg.porcentajeActasContabilizadas}%` }}
+                            transition={{ duration: 1, delay: idx * 0.05 }}
+                            className="h-full bg-amber-400 rounded-full" />
                         </div>
-                        <div className="flex items-center gap-3 flex-1 px-4">
-                          <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${reg.porcentajeActasContabilizadas}%` }}
-                              className="h-full bg-amber-500"
-                            />
-                          </div>
-                          <span className="text-[11px] font-black text-amber-700 w-12 text-right">
-                            {reg.porcentajeActasContabilizadas.toFixed(1)}%
-                          </span>
-                        </div>
+                        <span className="text-[11px] font-bold text-amber-600 w-16 text-right tabular-nums">
+                          {reg.porcentajeActasContabilizadas.toFixed(3)}%
+                        </span>
                       </div>
                     );
                   })}
@@ -742,51 +525,36 @@ export default function App() {
 
         {/* ── Comparison Chart ── */}
         <section>
-          <div className="flex items-center gap-3 mb-5">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-bold">
-              Comparativa de Porcentajes
-            </h2>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-card p-6">
+          <SectionHeader icon={BarChart3} title="Comparativa de Porcentajes" iconColor="#6366F1" />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 md:p-6">
             <div className="space-y-3">
               {candidates.slice(0, 8).map((candidate, idx) => (
-                <motion.div
-                  key={candidate.id}
-                  initial={{ opacity: 0, x: -30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: idx * 0.08 }}
-                  className="flex items-center gap-4"
-                >
-                  {/* Photo + Name */}
-                  <div className="w-8 hidden sm:block">
+                <motion.div key={candidate.id}
+                  initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.06 }}
+                  className="flex items-center gap-3 md:gap-4">
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-muted-foreground w-5 text-right">#{idx + 1}</span>
                     <CandidateAvatar candidate={candidate} size="sm" />
                   </div>
-                  <div className="w-24 md:w-40 text-xs text-right text-muted-foreground truncate">
+                  <div className="w-28 md:w-40 text-xs text-right text-muted-foreground truncate font-medium">
                     {candidate.name.split(" ").slice(-2).join(" ")}
                   </div>
                   <div className="flex-1">
-                    <div className="relative h-8 bg-secondary rounded-md overflow-hidden">
+                    <div className="relative h-7 bg-slate-50 rounded-lg overflow-hidden border border-slate-100">
                       <motion.div
-                        className="absolute inset-y-0 left-0 rounded-md flex items-center justify-end pr-3"
+                        className="absolute inset-y-0 left-0 rounded-lg flex items-center justify-end pr-2.5"
                         style={{ backgroundColor: candidate.color }}
                         initial={{ width: 0 }}
-                        animate={{
-                          width: `${(candidate.validVotes / maxVotes) * 100}%`,
-                        }}
-                        transition={{
-                          duration: 1,
-                          delay: 0.5 + idx * 0.1,
-                          ease: "easeOut",
-                        }}
-                      >
-                        <span className="text-xs font-bold text-white whitespace-nowrap">
-                          {candidate.validVotes.toFixed(2)}%
+                        animate={{ width: `${(candidate.validVotes / maxVotes) * 100}%` }}
+                        transition={{ duration: 1, delay: 0.4 + idx * 0.08, ease: "easeOut" }}>
+                        <span className="text-[11px] font-bold text-white whitespace-nowrap tabular-nums">
+                          {candidate.validVotes.toFixed(3)}%
                         </span>
                       </motion.div>
                     </div>
                   </div>
-                  <div className="w-16 text-xs font-semibold text-right">
+                  <div className="w-16 text-xs font-semibold text-right tabular-nums text-muted-foreground">
                     {candidate.totalVotes.toLocaleString()}
                   </div>
                 </motion.div>
@@ -795,86 +563,49 @@ export default function App() {
           </div>
         </section>
 
-        {/* ── Full Ranking Table ── */}
+        {/* ── Full Table ── */}
         <section>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold">Tabla de Posiciones</h2>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+            <SectionHeader icon={TrendingUp} title="Tabla de Posiciones" iconColor="#2563EB" />
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                id="search-candidates"
-                type="text"
-                placeholder="Buscar candidato..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-lg bg-card border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all w-[180px] md:w-[240px]"
-              />
+              <input id="search-candidates" type="text" placeholder="Buscar candidato o partido…"
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                className="pl-9 pr-4 py-2.5 rounded-lg bg-white border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all w-full md:w-[260px]" />
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
-            {/* Table header */}
-            <div className="flex items-center gap-4 px-4 py-3 border-b border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <div className="w-8 text-center">#</div>
-              <div className="w-10" />
-              <div className="w-6" />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-slate-50 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="w-7 text-center">#</div>
+              <div className="w-9" /><div className="w-6" />
               <div className="flex-1">Candidato</div>
-              <div className="hidden md:block flex-1 max-w-[200px]">
-                Representación
-              </div>
+              <div className="hidden md:block flex-1 max-w-[200px]">Representación</div>
               <div className="min-w-[90px] text-right">Porcentaje</div>
             </div>
 
-            {/* Top 3 highlighted */}
-            <div className="border-b border-border/30">
+            <div className="border-b border-border">
               {top3.map((c, i) => (
-                <CandidateRow
-                  key={c.id}
-                  candidate={c}
-                  rank={i + 1}
-                  delay={i * 0.08}
-                  maxVotes={maxVotes}
-                />
+                <CandidateRow key={c.id} candidate={c} rank={i + 1} delay={i * 0.07} maxVotes={maxVotes} />
               ))}
             </div>
 
-            {/* Rest */}
             <AnimatePresence>
-              <div className="divide-y divide-border/20">
+              <div className="divide-y divide-border/60">
                 {displayedCandidates.map((c, i) => (
-                  <CandidateRow
-                    key={c.id}
-                    candidate={c}
-                    rank={
-                      candidates.findIndex((cc) => cc.id === c.id) + 1
-                    }
-                    delay={0.3 + i * 0.05}
-                    maxVotes={maxVotes}
-                  />
+                  <CandidateRow key={c.id} candidate={c}
+                    rank={candidates.findIndex(cc => cc.id === c.id) + 1}
+                    delay={0.2 + i * 0.04} maxVotes={maxVotes} />
                 ))}
               </div>
             </AnimatePresence>
 
-            {/* Show more/less */}
             {filteredCandidates.length > 5 && (
-              <button
-                id="toggle-candidates"
-                onClick={() => setShowAll(!showAll)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/5 transition-colors border-t border-border/30"
-              >
-                {showAll ? (
-                  <>
-                    Ver menos <ChevronUp className="w-4 h-4" />
-                  </>
-                ) : (
-                  <>
-                    Ver todos los candidatos ({filteredCandidates.length - 5}{" "}
-                    más) <ChevronDown className="w-4 h-4" />
-                  </>
-                )}
+              <button id="toggle-candidates" onClick={() => setShowAll(!showAll)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-primary hover:bg-blue-50 transition-colors border-t border-border">
+                {showAll
+                  ? <><ChevronUp className="w-4 h-4" /> Ver menos</>
+                  : <><ChevronDown className="w-4 h-4" /> Ver todos ({filteredCandidates.length - 5} más)</>}
               </button>
             )}
           </div>
@@ -882,60 +613,36 @@ export default function App() {
 
         {/* ── Bubble Distribution ── */}
         <section>
-          <div className="flex items-center gap-3 mb-5">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-bold">Distribución de Votos</h2>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-card p-6">
-            <div className="flex flex-wrap gap-3 justify-center items-end">
+          <SectionHeader icon={BarChart3} title="Distribución de Votos" iconColor="#6366F1" />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 md:p-7">
+            <p className="text-[11px] text-muted-foreground mb-6 text-center">
+              Tamaño proporcional al porcentaje de votos válidos obtenidos
+            </p>
+            <div className="flex flex-wrap gap-4 md:gap-5 justify-center items-end">
               {candidates.slice(0, 12).map((candidate, idx) => {
-                const sizePx = Math.max(48, candidate.validVotes * 5);
+                const multiplier = typeof window !== "undefined" && window.innerWidth < 768 ? 4 : 5;
+                const sizePx = Math.max(40, candidate.validVotes * multiplier);
                 return (
-                  <motion.div
-                    key={candidate.id}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: idx * 0.06 }}
-                    whileHover={{ scale: 1.08 }}
-                    className="relative group cursor-default flex flex-col items-center gap-1"
-                  >
-                    <div
-                      className="rounded-full overflow-hidden flex items-center justify-center shadow-lg border-2"
-                      style={{
-                        width: `${sizePx}px`,
-                        height: `${sizePx}px`,
-                        borderColor: candidate.color,
-                      }}
-                    >
-                      <img
-                        src={candidate.photoUrl}
-                        alt={candidate.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
+                  <motion.div key={candidate.id}
+                    initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.45, delay: idx * 0.06 }}
+                    whileHover={{ scale: 1.07, y: -3 }}
+                    className="relative group cursor-default flex flex-col items-center gap-1.5">
+                    <div className="rounded-full overflow-hidden flex items-center justify-center border-2"
+                      style={{ width: `${sizePx}px`, height: `${sizePx}px`, borderColor: candidate.color }}>
+                      <img src={candidate.photoUrl} alt={candidate.name} className="w-full h-full object-cover"
+                        onError={e => {
                           e.target.style.display = "none";
-                          e.target.parentElement.style.backgroundColor =
-                            candidate.color;
-                          e.target.parentElement.innerHTML = `<span style="color:white;font-weight:bold;font-size:${Math.max(
-                            10,
-                            sizePx * 0.18
-                          )}px">${candidate.validVotes.toFixed(1)}%</span>`;
-                        }}
-                      />
+                          e.target.parentElement.style.backgroundColor = candidate.color;
+                          e.target.parentElement.innerHTML = `<span style="color:white;font-weight:900;font-size:${Math.max(10, sizePx * 0.2)}px">${candidate.validVotes.toFixed(1)}%</span>`;
+                        }} />
                     </div>
-                    <span
-                      className="text-[10px] font-bold"
-                      style={{ color: candidate.color }}
-                    >
+                    <span className="text-[10px] font-bold tabular-nums" style={{ color: candidate.color }}>
                       {candidate.validVotes.toFixed(1)}%
                     </span>
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-popover border border-border rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
-                      <p className="font-semibold">
-                        {candidate.name.split(" ").slice(-2).join(" ")}
-                      </p>
-                      <p className="text-muted-foreground">
-                        {candidate.party}
-                      </p>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-white border border-border rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-md">
+                      <p className="font-bold text-foreground">{candidate.name.split(" ").slice(-2).join(" ")}</p>
+                      <p className="text-muted-foreground text-[10px]">{candidate.party}</p>
                     </div>
                   </motion.div>
                 );
@@ -945,27 +652,15 @@ export default function App() {
         </section>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-border/50 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+      {/* ════ FOOTER ════ */}
+      <footer className="border-t border-border bg-white mt-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <p>
             Datos en tiempo real de la{" "}
-            <a
-              href={SOURCE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              ONPE
-            </a>{" "}
-            • Resultados parciales sujetos a cambios • Auto-actualización cada 2
-            min
+            <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold">ONPE</a>
+            {" "}• Resultados parciales sujetos a cambios • Auto-actualización cada 2 min
           </p>
-          <p>
-            {lastUpdated
-              ? `Última actualización: ${lastUpdated.toLocaleString("es-PE")}`
-              : ""}
-          </p>
+          <p>{lastUpdated ? `Última actualización: ${lastUpdated.toLocaleString("es-PE")}` : ""}</p>
         </div>
       </footer>
     </div>
