@@ -4,6 +4,7 @@ import {
   Geographies,
   Geography,
   ZoomableGroup,
+  Marker,
 } from "react-simple-maps";
 import { Plus, Minus, Info, Maximize2, Minimize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,6 +81,7 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
   const [isExpanded, setIsExpanded] = useState(false);
   const [deptResults, setDeptResults] = useState([]);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [isButtonZooming, setIsButtonZooming] = useState(false);
 
   // Map Mode State
   const [mapMode, setMapMode] = useState("2021"); // "2021" o "2026"
@@ -218,12 +220,16 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
 
   const handleZoomIn = () => {
     if (position.zoom >= 4) return;
-    setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.5 }));
+    setIsButtonZooming(true);
+    setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.3 }));
+    setTimeout(() => setIsButtonZooming(false), 300);
   };
 
   const handleZoomOut = () => {
     if (position.zoom <= 1) return;
-    setPosition((pos) => ({ ...pos, zoom: pos.zoom / 1.5 }));
+    setIsButtonZooming(true);
+    setPosition((pos) => ({ ...pos, zoom: pos.zoom / 1.3 }));
+    setTimeout(() => setIsButtonZooming(false), 300);
   };
 
   const handleZoomEnd = (position) => {
@@ -231,7 +237,9 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
   };
 
   const handleReset = () => {
+    setIsButtonZooming(true);
     setPosition({ coordinates: [-75, -9.5], zoom: 1 });
+    setTimeout(() => setIsButtonZooming(false), 300);
   };
 
   return (
@@ -264,6 +272,7 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
             onMoveEnd={handleZoomEnd}
             minZoom={0.8}
             maxZoom={10}
+            className={isButtonZooming ? "transition-transform duration-300 ease-in-out" : ""}
           >
             <Geographies geography={GEOURL}>
               {({ geographies }) =>
@@ -343,6 +352,47 @@ export default function PeruMap({ heatmapData = [], ubigeosData = [], totals = n
                 })
               }
             </Geographies>
+
+            {/* CALLAO Hover Helper (Exaggerated Hitbox) */}
+            <Marker coordinates={[-77.10, -12.02]}>
+              <circle
+                r={isExpanded ? 3.5 : 5.5}
+                fill={(() => {
+                  const pct = departmentData["CALLAO"]?.percentage;
+                  const ubigeoStr = departmentData["CALLAO"]?.ubigeo ? departmentData["CALLAO"].ubigeo.toString().padStart(6, "0") : "070000";
+                  const leaning = (mapMode === "2026" && currentWinners[ubigeoStr])
+                    ? currentWinners[ubigeoStr]
+                    : (politicalLeaning["CALLAO"] || "Neutro");
+                  return getFillColor(pct, leaning);
+                })()}
+                stroke="#ffffff"
+                strokeWidth={1.5}
+                style={{ cursor: "pointer", filter: "drop-shadow(0px 1px 3px rgba(0,0,0,0.5))" }}
+                onMouseEnter={() => {
+                  const pct = departmentData["CALLAO"]?.percentage;
+                  const ubigeo = departmentData["CALLAO"]?.ubigeo;
+                  const ubigeoStr = ubigeo ? ubigeo.toString().padStart(6, "0") : "070000";
+                  const leaning = (mapMode === "2026" && currentWinners[ubigeoStr])
+                    ? currentWinners[ubigeoStr]
+                    : (politicalLeaning["CALLAO"] || "Neutro");
+                  setHoveredDept({
+                    name: "PROV. CONST. DEL CALLAO",
+                    percentage: pct,
+                    leaning: leaning,
+                    ubigeo: ubigeo
+                  });
+                }}
+                onMouseMove={(evt) => {
+                  const container = evt.currentTarget.closest('.relative');
+                  const rect = container.getBoundingClientRect();
+                  setTooltipPosition({
+                    x: evt.clientX - rect.left,
+                    y: evt.clientY - rect.top
+                  });
+                }}
+                onMouseLeave={() => setHoveredDept(null)}
+              />
+            </Marker>
           </ZoomableGroup>
         </ComposableMap>
       </div>

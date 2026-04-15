@@ -1,29 +1,67 @@
 const BASE = "/api-onpe/presentacion-backend";
 const ONPE_ASSETS = "https://resultadoelectoral.onpe.gob.pe/assets/img-reales";
 
-// Color palette for parties - mapped by position for visual variety
-const PARTY_COLORS = [
-  "#DC2626", // red
-  "#F59E0B", // amber
-  "#F97316", // orange
-  "#0369A1", // sky
-  "#1E3A5F", // navy
-  "#B91C1C", // dark red
-  "#059669", // emerald
-  "#7C3AED", // violet
-  "#2563EB", // blue
-  "#10B981", // green
-  "#6366F1", // indigo
-  "#EC4899", // pink
-  "#14B8A6", // teal
-  "#8B5CF6", // purple
-  "#EF4444", // red-500
-  "#D97706", // amber-600
-  "#0284C7", // sky-600
-  "#4F46E5", // indigo-600
-  "#DB2777", // pink-600
-  "#0D9488", // teal-600
-];
+// Diccionario de colores por partido político
+const PARTY_COLORS_MAP = {
+  "FUERZA POPULAR": "#F97316", // Naranja
+  "ALIANZA PARA EL PROGRESO": "#2563EB", // Azul
+  "RENOVACION POPULAR": "#0284C7", // Celeste
+  "RENOVACIÓN POPULAR": "#0284C7",
+  "AVANZA PAIS": "#1D4ED8", // Azul tren
+  "AVANZA PAÍS": "#1D4ED8",
+  "ACCION POPULAR": "#DC2626", // Rojo/Lampa
+  "ACCIÓN POPULAR": "#DC2626",
+  "PODEMOS PERU": "#B91C1C", // Rojo
+  "PODEMOS PERÚ": "#B91C1C",
+  "SOMOS PERU": "#059669", // Verde/Rojo
+  "SOMOS PERÚ": "#059669",
+  "PARTIDO MORADO": "#7C3AED", // Morado
+  "PERU LIBRE": "#DC2626", // Rojo
+  "PERÚ LIBRE": "#DC2626",
+  "JUNTOS POR EL PERU": "#10B981", // Verde
+  "JUNTOS POR EL PERÚ": "#10B981",
+  "FREPAP": "#0369A1", // Azul oscuro
+  "PARTIDO POLITICO INTEGRIDAD DEMOCRATICA": "#4F46E5",
+  "PARTIDO POLÍTICO INTEGRIDAD DEMOCRÁTICA": "#4F46E5",
+  "PARTIDO PATRIOTICO DEL PERU": "#7F1D1D",
+  "PARTIDO PATRIÓTICO DEL PERÚ": "#7F1D1D",
+  "PARTIDO PAIS PARA TODOS": "#0D9488",
+  "PARTIDO PAÍS PARA TODOS": "#0D9488",
+  "PARTIDO SICREO": "#F59E0B",
+  "UNIDAD NACIONAL": "#1E3A8A", // Azul clásico
+  "PARTIDO APRISTA PERUANO": "#DC2626", // Rojo estrella
+  "NUEVO PERU": "#10B981", // Verde
+  "NUEVO PERÚ": "#10B981",
+  "PRIMERO LA GENTE": "#EC4899", // Rosa/Magenta
+  "PARTIDO DEL BUEN GOBIERNO": "#EAB308", // Amarillo/Rojo
+  "BUEN GOBIERNO": "#EAB308"
+};
+
+const DEFAULT_COLORS = ["#0284C7", "#059669", "#7C3AED", "#DB2777", "#64748B", "#F59E0B", "#10B981", "#14B8A6"];
+
+export function getPartyColor(partyName) {
+  if (!partyName) return "#94A3B8";
+  
+  const normalized = partyName.toUpperCase().trim();
+  
+  if (PARTY_COLORS_MAP[normalized]) {
+    return PARTY_COLORS_MAP[normalized];
+  }
+
+  // Búsqueda parcial por si viene con nombre largo ej "AVANZA PAÍS - PARTIDO DE..."
+  for (const [key, color] of Object.entries(PARTY_COLORS_MAP)) {
+    if (normalized.includes(key)) {
+      return color;
+    }
+  }
+
+  // Fallback hash predecible para que el mismo partido siempre tenga el mismo color aleatorio
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return DEFAULT_COLORS[Math.abs(hash) % DEFAULT_COLORS.length];
+}
 
 /**
  * Get candidate photo URL from DNI
@@ -65,7 +103,7 @@ export async function fetchCandidates() {
       emittedVotes: item.porcentajeVotosEmitidos,
       photoUrl: getCandidatePhotoUrl(item.dniCandidato),
       logoUrl: getPartyLogoUrl(item.codigoAgrupacionPolitica),
-      color: PARTY_COLORS[index % PARTY_COLORS.length],
+      color: getPartyColor(item.nombreAgrupacionPolitica),
     }));
 
   // Sort by valid votes percentage descending
@@ -134,4 +172,14 @@ export async function fetchCandidatesByDepartment(ubigeoNivel1) {
        logoUrl: getPartyLogoUrl(item.codigoAgrupacionPolitica),
        candidateName: item.nombreCandidato
     }));
+}
+
+/**
+ * Fetch tracking data (historical evolution of percentages)
+ */
+export async function fetchTracking() {
+  const res = await fetch("https://onpe-proxy.renzonunez-af.workers.dev/api/tracking");
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return data.cuts || [];
 }

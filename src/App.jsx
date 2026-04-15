@@ -18,8 +18,9 @@ import {
   Activity,
 } from "lucide-react";
 import { cn } from "./lib/utils";
-import { fetchCandidates, fetchTotals, fetchHeatmap, fetchUbigeos } from "./api/onpe";
+import { fetchCandidates, fetchTotals, fetchHeatmap, fetchUbigeos, fetchTracking } from "./api/onpe";
 import PeruMap from "./components/PeruMap";
+import TrackingChart from "./components/TrackingChart";
 import "./index.css";
 
 const SOURCE_URL = "https://resultadoelectoral.onpe.gob.pe/main/presidenciales";
@@ -270,6 +271,7 @@ export default function App() {
   const [totals, setTotals] = useState(null);
   const [heatmapData, setHeatmapData] = useState([]);
   const [ubigeosData, setUbigeosData] = useState([]);
+  const [trackingData, setTrackingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
@@ -280,16 +282,18 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [candidatesData, totalsData, heatmapRaw, ubigeosRaw] = await Promise.all([
+      const [candidatesData, totalsData, heatmapRaw, ubigeosRaw /*, trackingRaw*/] = await Promise.all([
         fetchCandidates(),
         fetchTotals().catch(() => null),
         fetchHeatmap().catch(() => []),
         fetchUbigeos().catch(() => []),
+        // fetchTracking().catch(() => []),
       ]);
       setCandidates(candidatesData);
       setTotals(totalsData);
       setHeatmapData(heatmapRaw);
       setUbigeosData(ubigeosRaw);
+      // setTrackingData(trackingRaw);
       setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || "No se pudieron obtener los datos de la ONPE");
@@ -562,6 +566,14 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        {/* ── Tracking Evolution Chart ── */}
+        {/* <section>
+          <SectionHeader icon={TrendingUp} title="Evolución del Conteo" iconColor="#F59E0B" />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-6 w-full">
+            <TrackingChart data={trackingData} />
+          </div>
+        </section> */}
 
         {/* ── Full Table ── */}
         <section>
