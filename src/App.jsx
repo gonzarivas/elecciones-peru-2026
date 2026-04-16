@@ -215,12 +215,12 @@ function PodiumCard({ candidate, rank, delay, top3 }) {
             </span>
           </div>
 
-          {/* Brechas de Votos (Hacia arriba) */}
+          {/* Brechas de Votos (Hacia arriba) - Solo magnitudes positivas */}
           {rank === 2 && top3?.[0] && (
             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
               <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Diferencia vs 1°</span>
               <span className="text-[11px] font-black tabular-nums text-red-600">
-                -{(top3[0].totalVotes - candidate.totalVotes).toLocaleString()}
+                {(top3[0].totalVotes - candidate.totalVotes).toLocaleString()}
               </span>
             </div>
           )}
@@ -228,7 +228,7 @@ function PodiumCard({ candidate, rank, delay, top3 }) {
             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
               <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Diferencia vs 2°</span>
               <span className="text-[11px] font-black tabular-nums text-red-600">
-                -{(top3[1].totalVotes - candidate.totalVotes).toLocaleString()}
+                {(top3[1].totalVotes - candidate.totalVotes).toLocaleString()}
               </span>
             </div>
           )}
