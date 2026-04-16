@@ -321,6 +321,25 @@ export default function App() {
     }
   };
 
+  const handleHeaderProgressMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = (x / rect.width) * 100;
+    
+    let label = "Actas Pendientes";
+    let value = 100 - (totals?.actasContabilizadas || 0) - (totals?.actasEnviadasJee || 0);
+    
+    if (pct < (totals?.actasContabilizadas || 0)) {
+      label = "Actas Contabilizadas";
+      value = totals?.actasContabilizadas || 0;
+    } else if (pct < ((totals?.actasContabilizadas || 0) + (totals?.actasEnviadasJee || 0))) {
+      label = "Enviadas al JEE";
+      value = totals?.actasEnviadasJee || 0;
+    }
+    
+    setHeaderProgressHover({ x: `${pct}%`, label, value });
+  };
+
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 120000);
