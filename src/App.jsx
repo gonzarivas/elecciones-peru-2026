@@ -416,11 +416,13 @@ export default function App() {
               </div>
 
               {/* Composite progress bar */}
-              <div className="h-3 w-full flex rounded-full overflow-hidden bg-slate-100">
+              <div className="h-3 w-full flex rounded-full overflow-hidden bg-slate-100 cursor-help">
                 <motion.div style={{ backgroundColor: "#2563EB" }}
+                  title={`Actas Contabilizadas: ${contabilizadasPct.toFixed(3)}%`}
                   initial={{ width: 0 }} animate={{ width: `${contabilizadasPct}%` }}
                   transition={{ duration: 1.5, ease: "easeOut" }} />
                 <motion.div style={{ backgroundColor: "#F59E0B" }}
+                  title={`Actas para envío al JEE: ${enviadasJeePct.toFixed(3)}%`}
                   initial={{ width: 0 }} animate={{ width: `${enviadasJeePct}%` }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }} />
               </div>
