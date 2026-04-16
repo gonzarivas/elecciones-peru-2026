@@ -295,6 +295,7 @@ export default function App() {
   const [showAll, setShowAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [headerProgressHover, setHeaderProgressHover] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -415,16 +416,55 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Composite progress bar */}
-              <div className="h-3 w-full flex rounded-full overflow-hidden bg-slate-100 cursor-help">
-                <motion.div style={{ backgroundColor: "#2563EB" }}
-                  title={`Actas Contabilizadas: ${contabilizadasPct.toFixed(3)}%`}
-                  initial={{ width: 0 }} animate={{ width: `${contabilizadasPct}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }} />
-                <motion.div style={{ backgroundColor: "#F59E0B" }}
-                  title={`Actas para envío al JEE: ${enviadasJeePct.toFixed(3)}%`}
-                  initial={{ width: 0 }} animate={{ width: `${enviadasJeePct}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }} />
+              {/* Composite progress bar with floating tooltip */}
+              <div className="relative mt-2">
+                <AnimatePresence>
+                  {headerProgressHover && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, x: "-50%", scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
+                      exit={{ opacity: 0, y: 5, x: "-50%", scale: 0.9 }}
+                      transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                      style={{ left: headerProgressHover.x }}
+                      className="absolute bottom-full mb-3 px-4 py-2 bg-slate-900 border border-white/10 text-white rounded-2xl shadow-2xl z-[100] whitespace-nowrap pointer-events-none"
+                    >
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-tight">
+                          {headerProgressHover.label}
+                        </span>
+                        <span className="text-sm font-black tabular-nums leading-tight">
+                          {headerProgressHover.value.toFixed(3)}%
+                        </span>
+                      </div>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-[6px] border-transparent border-t-slate-900" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="h-3.5 w-full flex rounded-full overflow-hidden bg-slate-100 cursor-pointer ring-1 ring-slate-200 ring-inset shadow-inner">
+                  <motion.div 
+                    style={{ backgroundColor: "#2563EB", width: `${contabilizadasPct}%` }}
+                    onMouseEnter={() => setHeaderProgressHover({ x: `${contabilizadasPct / 2}%`, label: "Actas Contabilizadas", value: contabilizadasPct })}
+                    onMouseLeave={() => setHeaderProgressHover(null)}
+                    initial={{ width: 0 }} animate={{ width: `${contabilizadasPct}%` }}
+                    transition={{ duration: 1.5, ease: "easeOut" }} 
+                    className="h-full relative" />
+                  <motion.div 
+                    style={{ backgroundColor: "#F59E0B", width: `${enviadasJeePct}%` }}
+                    onMouseEnter={() => setHeaderProgressHover({ x: `${contabilizadasPct + (enviadasJeePct / 2)}%`, label: "Enviadas al JEE", value: enviadasJeePct })}
+                    onMouseLeave={() => setHeaderProgressHover(null)}
+                    initial={{ width: 0 }} animate={{ width: `${enviadasJeePct}%` }}
+                    transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                    className="h-full relative" />
+                  <div 
+                    className="flex-1 h-full"
+                    onMouseEnter={() => {
+                      const val = 100 - contabilizadasPct - enviadasJeePct;
+                      setHeaderProgressHover({ x: `${contabilizadasPct + enviadasJeePct + (val / 2)}%`, label: "Actas Pendientes", value: val });
+                    }}
+                    onMouseLeave={() => setHeaderProgressHover(null)}
+                  />
+                </div>
               </div>
 
               {lastUpdated && (
