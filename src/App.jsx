@@ -147,7 +147,7 @@ function StatCard({ icon: Icon, label, value, sublabel, idx = 0 }) {
 }
 
 /* ─── Podium Card ─── */
-function PodiumCard({ candidate, rank, delay }) {
+function PodiumCard({ candidate, rank, delay, top3 }) {
   const isSecondRound = rank <= 2;
   const rankColors = { 1: "#2563EB", 2: "#2563EB", 3: "#94A3B8" };
   const pctColor = isSecondRound ? candidate.color : "#0F172A";
@@ -214,6 +214,44 @@ function PodiumCard({ candidate, rank, delay }) {
               {candidate.totalVotes.toLocaleString()}
             </span>
           </div>
+
+          {/* Brechas de Votos */}
+          {rank === 1 && top3?.[1] && (
+            <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
+              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Ventaja vs 2°</span>
+              <span className="text-[11px] font-black tabular-nums text-emerald-600">
+                +{(candidate.totalVotes - top3[1].totalVotes).toLocaleString()}
+              </span>
+            </div>
+          )}
+          {rank === 2 && top3 && (
+            <div className="space-y-1 mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
+              {top3[0] && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Brecha vs 1°</span>
+                  <span className="text-[11px] font-black tabular-nums text-red-600">
+                    -{(top3[0].totalVotes - candidate.totalVotes).toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {top3[2] && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Ventaja vs 3°</span>
+                  <span className="text-[11px] font-black tabular-nums text-emerald-600">
+                    +{(candidate.totalVotes - top3[2].totalVotes).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {rank === 3 && top3?.[1] && (
+            <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
+              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Brecha vs 2°</span>
+              <span className="text-[11px] font-black tabular-nums text-red-600">
+                -{(top3[1].totalVotes - candidate.totalVotes).toLocaleString()}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
@@ -446,9 +484,9 @@ export default function App() {
             </div>
           </SectionHeader>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-            {top3[0] && <PodiumCard candidate={top3[0]} rank={1} delay={0.1} />}
-            {top3[1] && <PodiumCard candidate={top3[1]} rank={2} delay={0.2} />}
-            {top3[2] && <PodiumCard candidate={top3[2]} rank={3} delay={0.3} />}
+            {top3[0] && <PodiumCard candidate={top3[0]} rank={1} delay={0.1} top3={top3} />}
+            {top3[1] && <PodiumCard candidate={top3[1]} rank={2} delay={0.2} top3={top3} />}
+            {top3[2] && <PodiumCard candidate={top3[2]} rank={3} delay={0.3} top3={top3} />}
           </div>
         </section>
 
