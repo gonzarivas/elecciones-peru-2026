@@ -215,38 +215,18 @@ function PodiumCard({ candidate, rank, delay, top3 }) {
             </span>
           </div>
 
-          {/* Brechas de Votos */}
-          {rank === 1 && top3?.[1] && (
+          {/* Brechas de Votos (Hacia arriba) */}
+          {rank === 2 && top3?.[0] && (
             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
-              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Ventaja vs 2°</span>
-              <span className="text-[11px] font-black tabular-nums text-emerald-600">
-                +{(candidate.totalVotes - top3[1].totalVotes).toLocaleString()}
+              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Diferencia vs 1°</span>
+              <span className="text-[11px] font-black tabular-nums text-red-600">
+                -{(top3[0].totalVotes - candidate.totalVotes).toLocaleString()}
               </span>
-            </div>
-          )}
-          {rank === 2 && top3 && (
-            <div className="space-y-1 mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
-              {top3[0] && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Brecha vs 1°</span>
-                  <span className="text-[11px] font-black tabular-nums text-red-600">
-                    -{(top3[0].totalVotes - candidate.totalVotes).toLocaleString()}
-                  </span>
-                </div>
-              )}
-              {top3[2] && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Ventaja vs 3°</span>
-                  <span className="text-[11px] font-black tabular-nums text-emerald-600">
-                    +{(candidate.totalVotes - top3[2].totalVotes).toLocaleString()}
-                  </span>
-                </div>
-              )}
             </div>
           )}
           {rank === 3 && top3?.[1] && (
             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 border-dashed">
-              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Brecha vs 2°</span>
+              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">Diferencia vs 2°</span>
               <span className="text-[11px] font-black tabular-nums text-red-600">
                 -{(top3[1].totalVotes - candidate.totalVotes).toLocaleString()}
               </span>
