@@ -441,29 +441,21 @@ export default function App() {
                   )}
                 </AnimatePresence>
 
-                <div className="h-3.5 w-full flex rounded-full overflow-hidden bg-slate-100 cursor-pointer ring-1 ring-slate-200 ring-inset shadow-inner">
+                <div 
+                  onMouseMove={handleHeaderProgressMove} 
+                  onMouseLeave={() => setHeaderProgressHover(null)}
+                  className="h-3.5 w-full flex rounded-full overflow-hidden bg-slate-100 cursor-pointer ring-1 ring-slate-200 ring-inset shadow-inner relative"
+                >
                   <motion.div 
                     style={{ backgroundColor: "#2563EB", width: `${contabilizadasPct}%` }}
-                    onMouseEnter={() => setHeaderProgressHover({ x: `${contabilizadasPct / 2}%`, label: "Actas Contabilizadas", value: contabilizadasPct })}
-                    onMouseLeave={() => setHeaderProgressHover(null)}
                     initial={{ width: 0 }} animate={{ width: `${contabilizadasPct}%` }}
                     transition={{ duration: 1.5, ease: "easeOut" }} 
-                    className="h-full relative" />
+                    className="h-full pointer-events-none" />
                   <motion.div 
                     style={{ backgroundColor: "#F59E0B", width: `${enviadasJeePct}%` }}
-                    onMouseEnter={() => setHeaderProgressHover({ x: `${contabilizadasPct + (enviadasJeePct / 2)}%`, label: "Enviadas al JEE", value: enviadasJeePct })}
-                    onMouseLeave={() => setHeaderProgressHover(null)}
                     initial={{ width: 0 }} animate={{ width: `${enviadasJeePct}%` }}
                     transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
-                    className="h-full relative" />
-                  <div 
-                    className="flex-1 h-full"
-                    onMouseEnter={() => {
-                      const val = 100 - contabilizadasPct - enviadasJeePct;
-                      setHeaderProgressHover({ x: `${contabilizadasPct + enviadasJeePct + (val / 2)}%`, label: "Actas Pendientes", value: val });
-                    }}
-                    onMouseLeave={() => setHeaderProgressHover(null)}
-                  />
+                    className="h-full pointer-events-none" />
                 </div>
               </div>
 
